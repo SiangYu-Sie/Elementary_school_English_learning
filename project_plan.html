@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>國小英文趣味學習網站 - 實作計畫書</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Noto+Sans+TC:wght@300;400;700;900&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Confetti JS -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+    <style>
+        :root {
+            --bg-color: #0b0f19;
+            --card-bg: rgba(20, 26, 46, 0.7);
+            --border-color: rgba(255, 255, 255, 0.08);
+            --primary: #8b5cf6;
+            --primary-hover: #a78bfa;
+            --secondary: #f59e0b;
+            --success: #10b981;
+            --danger: #ef4444;
+            --text-main: #f3f4f6;
+            --text-muted: #9ca3af;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Outfit', 'Noto Sans TC', sans-serif;
+            transition: all 0.3s ease;
+        }
+
+        body {
+            background: radial-gradient(circle at top, #1e1b4b 0%, #09090b 100%);
+            color: var(--text-main);
+            min-height: 100vh;
+            padding: 2rem;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 3rem;
+            position: relative;
+        }
+
+        header::after {
+            content: '';
+            display: block;
+            width: 100px;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            margin: 1.5rem auto 0;
+            border-radius: 2px;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #c084fc, #6366f1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+        }
+
+        .subtitle {
+            color: var(--text-muted);
+            font-size: 1.1rem;
+        }
+
+        /* Tabs Navigation */
+        .tabs {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin-bottom: 2.5rem;
+        }
+
+        .tab-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-color);
+            color: var(--text-muted);
+            padding: 0.8rem 2rem;
+            border-radius: 30px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .tab-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text-main);
+        }
+
+        .tab-btn.active {
+            background: linear-gradient(135deg, var(--primary), #6366f1);
+            border-color: transparent;
+            color: white;
+            box-shadow: 0 4px 20px rgba(139, 92, 246, 0.4);
+        }
+
+        /* Tab Content */
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.5s ease;
+        }
+
+        /* Glass Card */
+        .glass-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 2.5rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        .card-header-icon {
+            display: inline-flex;
+            padding: 12px;
+            background: rgba(139, 92, 246, 0.15);
+            border-radius: 12px;
+            color: var(--primary);
+            margin-bottom: 1.5rem;
+        }
+
+        h2 {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .section-desc {
+            color: var(--text-muted);
+            margin-bottom: 2rem;
+            font-size: 1.05rem;
+        }
+
+        /* Interactive Prototype Demos */
+        .demo-box {
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px dashed rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 2rem;
+            margin-top: 1.5rem;
+        }
+
+        .demo-title {
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--secondary);
+            margin-bottom: 1.5rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        /* RPG Battle Demo Styling */
+        .battle-arena {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1.5rem;
+        }
+
+        .monster-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+        }
+
+        .monster {
+            font-size: 5rem;
+            filter: drop-shadow(0 0 10px rgba(239, 68, 68, 0.5));
+            animation: float 3s ease-in-out infinite;
+        }
+
+        .monster.damaged {
+            animation: shake 0.2s ease-in-out infinite;
+            filter: drop-shadow(0 0 20px rgba(239, 68, 68, 0.8)) hue-rotate(90deg);
+        }
+
+        .hp-bar-outer {
+            width: 200px;
+            height: 12px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            overflow: hidden;
+            margin-top: 10px;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .hp-bar-inner {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, var(--danger), #f87171);
+            transition: width 0.3s ease;
+        }
+
+        .spell-question {
+            font-size: 1.8rem;
+            font-weight: 700;
+            letter-spacing: 4px;
+            margin: 1rem 0;
+            color: var(--text-main);
+        }
+
+        .spell-input-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        .spell-input {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-color);
+            color: white;
+            padding: 0.8rem 1.2rem;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            width: 250px;
+            text-align: center;
+        }
+
+        .spell-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 10px rgba(139, 92, 246, 0.3);
+        }
+
+        .spell-btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 0.8rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .spell-btn:hover {
+            background: var(--primary-hover);
+        }
+
+        /* Card Demo Styling */
+        .card-gallery {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 3rem;
+            flex-wrap: wrap;
+            padding: 1rem 0;
+        }
+
+        .card-container {
+            perspective: 1000px;
+            width: 260px;
+            height: 360px;
+        }
+
+        .magic-card {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            transform-style: preserve-3d;
+            cursor: pointer;
+        }
+
+        .magic-card.flipped {
+            transform: rotateY(180deg);
+        }
+
+        .card-face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            border-radius: 20px;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+            border: 2px solid;
+        }
+
+        .card-front {
+            background: linear-gradient(135deg, #1e1b4b, #2e1065);
+            border-color: var(--primary);
+            color: var(--text-main);
+        }
+
+        .card-back {
+            background: linear-gradient(135deg, #0f172a, #1e293b);
+            border-color: var(--secondary);
+            color: var(--text-main);
+            transform: rotateY(180deg);
+        }
+
+        .card-badge {
+            align-self: flex-start;
+            background: rgba(139, 92, 246, 0.2);
+            color: var(--primary-hover);
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            border: 1px solid rgba(139, 92, 246, 0.3);
+        }
+
+        .card-back .card-badge {
+            background: rgba(245, 158, 11, 0.2);
+            color: var(--secondary);
+            border-color: rgba(245, 158, 11, 0.3);
+        }
+
+        .card-image {
+            font-size: 4rem;
+            text-align: center;
+            margin: 1rem 0;
+            filter: drop-shadow(0 4px 8px rgba(0,0,0,0.5));
+        }
+
+        .card-title {
+            font-size: 1.8rem;
+            font-weight: 800;
+            text-align: center;
+            letter-spacing: 1px;
+        }
+
+        .card-stats {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            padding: 8px;
+            font-size: 0.85rem;
+            display: flex;
+            justify-content: space-around;
+        }
+
+        .stat-val {
+            color: var(--secondary);
+            font-weight: 700;
+        }
+
+        .card-translation {
+            font-size: 1.5rem;
+            font-weight: 700;
+            text-align: center;
+            color: var(--secondary);
+        }
+
+        .card-sentence {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            text-align: center;
+        }
+
+        .evolve-panel {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .evolve-btn {
+            background: linear-gradient(135deg, var(--secondary), #d97706);
+            color: white;
+            border: none;
+            padding: 0.8rem 2rem;
+            border-radius: 30px;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);
+        }
+
+        .evolve-btn:hover {
+            transform: scale(1.05);
+        }
+
+        /* Tech Plan Styling */
+        .tech-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-top: 1.5rem;
+        }
+
+        .tech-box {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.5rem;
+        }
+
+        .tech-box h3 {
+            font-size: 1.15rem;
+            color: var(--primary-hover);
+            margin-bottom: 0.8rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .tech-box ul {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .tech-box li {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            margin-bottom: 0.6rem;
+            position: relative;
+            padding-left: 1.2rem;
+        }
+
+        .tech-box li::before {
+            content: '✦';
+            position: absolute;
+            left: 0;
+            color: var(--secondary);
+        }
+
+        /* Architecture diagram style */
+        .flowchart {
+            background: rgba(255,255,255,0.02);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-top: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .flow-step {
+            background: rgba(139, 92, 246, 0.1);
+            border: 1px solid rgba(139, 92, 246, 0.2);
+            border-radius: 8px;
+            padding: 1rem;
+            position: relative;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        .flow-step.alt {
+            background: rgba(245, 158, 11, 0.1);
+            border: 1px solid rgba(245, 158, 11, 0.2);
+        }
+
+        .flow-arrow {
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 1.2rem;
+        }
+
+        /* Keyframes */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+            100% { transform: translateY(0px); }
+        }
+
+        @keyframes shake {
+            0% { transform: translate(1px, 1px) rotate(0deg); }
+            10% { transform: translate(-1px, -2px) rotate(-1deg); }
+            20% { transform: translate(-3px, 0px) rotate(1deg); }
+            30% { transform: translate(0px, 2px) rotate(0deg); }
+            40% { transform: translate(1px, -1px) rotate(1deg); }
+            50% { transform: translate(-1px, 2px) rotate(-1deg); }
+            60% { transform: translate(-3px, 1px) rotate(0deg); }
+            70% { transform: translate(2px, 1px) rotate(-1deg); }
+            80% { transform: translate(-1px, -1px) rotate(1deg); }
+            90% { transform: translate(2px, 2px) rotate(0deg); }
+            100% { transform: translate(1px, -2px) rotate(-1deg); }
+        }
+
+        @keyframes flash {
+            0% { background-color: rgba(16, 185, 129, 0.4); }
+            100% { background-color: transparent; }
+        }
+
+        .flash-success {
+            animation: flash 0.5s ease-out;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>英文單字魔法學院 實作計畫</h1>
+            <p class="subtitle">第一階段：RPG 冒險戰鬥實作 | 第二階段：卡牌寵物養成擴充</p>
+        </header>
+
+        <!-- Navigation Tabs -->
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('phase1')">
+                <i data-lucide="sword"></i> 第一階段：RPG 冒險
+            </button>
+            <button class="tab-btn" onclick="switchTab('phase2')">
+                <i data-lucide="sparkles"></i> 第二階段：卡牌寵物擴充
+            </button>
+            <button class="tab-btn" onclick="switchTab('architecture')">
+                <i data-lucide="database"></i> 技術架構與資料庫規劃
+            </button>
+        </div>
+
+        <!-- PHASE 1: RPG BATTLE -->
+        <div id="phase1" class="tab-content active">
+            <div class="glass-card">
+                <div class="card-header-icon"><i data-lucide="swords" style="width: 28px; height: 28px;"></i></div>
+                <h2>方案一：RPG 冒險戰鬥模式 (先期實作)</h2>
+                <p class="section-desc">
+                    核心概念是將現有的單字學習融入關卡劇情，並將 `QuizEngine` 改造成冒險戰鬥。學生回答問題就是對怪物施放魔法，藉此大幅降低傳統背單字的枯燥感。
+                </p>
+
+                <!-- Interactive Demo -->
+                <div class="demo-box">
+                    <div class="demo-title">
+                        <i data-lucide="play-circle"></i> 互動式戰鬥概念原型 (體驗一下！)
+                    </div>
+                    <div class="battle-arena">
+                        <div class="monster-container">
+                            <div id="monster-emoji" class="monster">👾</div>
+                            <div class="hp-bar-outer">
+                                <div id="monster-hp" class="hp-bar-inner"></div>
+                            </div>
+                            <span style="font-size: 0.8rem; color: var(--text-muted); margin-top: 5px;">小怪獸 (Lv.1)</span>
+                        </div>
+
+                        <div class="spell-question">
+                            a <span style="color: var(--secondary);" id="blank-letter">_</span> p l e
+                        </div>
+                        <p style="font-size: 0.9rem; color: var(--text-muted);">提示：這是一種紅色的健康水果 🍎</p>
+
+                        <div class="spell-input-group">
+                            <input type="text" id="answer-input" class="spell-input" placeholder="請輸入缺少的字母 (如: p)" maxlength="1" autocomplete="off">
+                            <button onclick="castSpell()" class="spell-btn">發射魔法 ⚡</button>
+                        </div>
+                        <p id="battle-feedback" style="font-weight: 700; height: 20px;"></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PHASE 2: CARD COLLECTION & PET -->
+        <div id="phase2" class="tab-content">
+            <div class="glass-card">
+                <div class="card-header-icon"><i data-lucide="sparkles" style="width: 28px; height: 28px;"></i></div>
+                <h2>方案二：卡牌與寵物養成模式 (後續擴充)</h2>
+                <p class="section-desc">
+                    當方案一穩定後，我們將無縫加入「卡牌收集與寵物進化」系統。每個學會的單字將具現化為單字卡，測驗答對可獲得飼料來養育、進化桌面的英文寵物。
+                </p>
+
+                <!-- Interactive Demo -->
+                <div class="demo-box">
+                    <div class="demo-title">
+                        <i data-lucide="play-circle"></i> 互動式卡牌翻轉與進化概念原型 (點擊卡片翻轉)
+                    </div>
+                    <div style="display: flex; flex-direction: column; align-items: center; gap: 2rem;">
+                        <div class="card-container">
+                            <div class="magic-card" id="spell-card" onclick="flipCard()">
+                                <!-- Front -->
+                                <div class="card-face card-front">
+                                    <div class="card-badge">魔法卡</div>
+                                    <div class="card-image" id="card-pet-avatar">🐱</div>
+                                    <div class="card-title" id="card-pet-name">Cat</div>
+                                    <div class="card-stats">
+                                        <span>ATK: <span class="stat-val" id="card-atk">15</span></span>
+                                        <span>HP: <span class="stat-val" id="card-hp">100</span></span>
+                                    </div>
+                                </div>
+                                <!-- Back -->
+                                <div class="card-face card-back">
+                                    <div class="card-badge">中文解釋</div>
+                                    <div class="card-translation">貓咪</div>
+                                    <div class="card-sentence">
+                                        "I have a cute cat."<br>
+                                        (我有一隻可愛的貓咪。)
+                                    </div>
+                                    <div class="card-stats" style="border-top: 1px solid rgba(255,255,255,0.1);">
+                                        <span>等級: <span class="stat-val" id="card-level">1</span></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="evolve-panel">
+                            <p style="font-size: 0.9rem; color: var(--text-muted);" id="evolve-hint">餵食 3 個單字飼料可讓小貓進化！</p>
+                            <button onclick="evolvePet()" class="evolve-btn" id="evolve-button">餵食飼料 🍖 (已有: 0/3)</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TECH ARCHITECTURE -->
+        <div id="architecture" class="tab-content">
+            <div class="glass-card">
+                <div class="card-header-icon"><i data-lucide="braces" style="width: 28px; height: 28px;"></i></div>
+                <h2>技術實作與無縫擴充架構</h2>
+                <p class="section-desc">
+                    為了保證方案一能快速開發上線，並在後續能<b>無痛融入方案二</b>，我們需要設計一個高度模組化的 React + Supabase 資料庫架構。
+                </p>
+
+                <div class="tech-grid">
+                    <div class="tech-box">
+                        <h3><i data-lucide="layout"></i> React 組件模組化設計</h3>
+                        <ul>
+                            <li><strong>學習地圖組件 (GameMap)</strong>：渲染關卡節點，串接 Supabase 單元狀態。</li>
+                            <li><strong>戰鬥測驗引擎 (BattleEngine)</strong>：承襲原 `QuizEngine` 的狀態機，增加怪物血條、傷害與音效邏輯。</li>
+                            <li><strong>卡牌元件 (VocabularyCard)</strong>：具備 3D 翻牌動畫與解鎖/屬性顯示，預留擴充接口。</li>
+                        </ul>
+                    </div>
+
+                    <div class="tech-box">
+                        <h3><i data-lucide="server"></i> Supabase 資料庫結構擴充</h3>
+                        <ul>
+                            <li><strong>profiles (核心)</strong>：擴充 `coins` (金幣), `level` (冒險等級), `exp` (經驗值) 欄位。</li>
+                            <li><strong>user_vocab_status</strong>：記錄每個單字的熟練度與是否卡牌化 (`is_card_unlocked`)。</li>
+                            <li><strong>user_pets (方案二擴充)</strong>：新表，儲存寵物類型、進化等級、總獲得經驗值。</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <h3 style="margin-top: 2rem; margin-bottom: 1rem;"><i data-lucide="workflow"></i> 實作串接流程</h3>
+                <div class="flowchart">
+                    <div class="flow-step">
+                        1. 擴充 profiles 欄位與單字狀態表 (Supabase 遷移)
+                    </div>
+                    <div class="flow-arrow"><i data-lucide="arrow-down"></i></div>
+                    <div class="flow-step">
+                        2. 開發方案一：整合 WordCard 與 QuizEngine，推出「RPG 冒險挑戰關卡」
+                    </div>
+                    <div class="flow-arrow"><i data-lucide="arrow-down"></i></div>
+                    <div class="flow-step alt">
+                        3. (後續擴充) 啟用 VocabularyCard 圖鑑，開啟「寵物養成進化」功能
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Init Lucide Icons
+        lucide.createIcons();
+
+        // Switch Tabs Logic
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+
+            document.getElementById(tabId).classList.add('active');
+            event.currentTarget.classList.add('active');
+        }
+
+        // --- Demo Phase 1: RPG Battle Logic ---
+        let monsterHp = 100;
+        function castSpell() {
+            const input = document.getElementById('answer-input');
+            const feedback = document.getElementById('battle-feedback');
+            const hpBar = document.getElementById('monster-hp');
+            const monster = document.getElementById('monster-emoji');
+
+            if (input.value.trim().toLowerCase() === 'p') {
+                monsterHp = Math.max(0, monsterHp - 34);
+                hpBar.style.width = monsterHp + '%';
+                
+                // Add damage effects
+                monster.classList.add('damaged');
+                feedback.innerText = '⚡ 答對了！施放閃電魔法對怪獸造成 34 點傷害！';
+                feedback.style.color = 'var(--success)';
+
+                // Play custom tone via Web Audio API
+                playTone(600, 0.1);
+                setTimeout(() => playTone(800, 0.15), 100);
+
+                setTimeout(() => {
+                    monster.classList.remove('damaged');
+                }, 400);
+
+                if (monsterHp <= 0) {
+                    confetti({
+                        particleCount: 150,
+                        spread: 80,
+                        origin: { y: 0.6 }
+                    });
+                    feedback.innerText = '🏆 你擊敗了小怪獸！獲得 50 金幣與 1 個單字飼料！';
+                    feedback.style.color = 'var(--secondary)';
+                    
+                    // Reset after 3 seconds
+                    setTimeout(() => {
+                        monsterHp = 100;
+                        hpBar.style.width = '100%';
+                        monster.innerHTML = '👾';
+                        document.getElementById('blank-letter').innerText = '_';
+                        feedback.innerText = '';
+                    }, 3500);
+                } else {
+                    document.getElementById('blank-letter').innerText = 'p';
+                }
+            } else {
+                feedback.innerText = '❌ 答錯囉，魔法反噬！再想一下這個單字！';
+                feedback.style.color = 'var(--danger)';
+                playTone(200, 0.3);
+            }
+            input.value = '';
+            input.focus();
+        }
+
+        // --- Demo Phase 2: Card Evolve Logic ---
+        let isFlipped = false;
+        let foodCount = 0;
+        let petStage = 1;
+
+        function flipCard() {
+            const card = document.getElementById('spell-card');
+            isFlipped = !isFlipped;
+            if (isFlipped) {
+                card.classList.add('flipped');
+            } else {
+                card.classList.remove('flipped');
+            }
+        }
+
+        function evolvePet() {
+            if (petStage >= 3) {
+                alert('您的寵物已進化至終極形態！✨');
+                return;
+            }
+            
+            foodCount++;
+            const evolveButton = document.getElementById('evolve-button');
+            const evolveHint = document.getElementById('evolve-hint');
+            const petAvatar = document.getElementById('card-pet-avatar');
+            const petName = document.getElementById('card-pet-name');
+            const atk = document.getElementById('card-atk');
+            const hp = document.getElementById('card-hp');
+            const cardLvl = document.getElementById('card-level');
+
+            // Play eating sound
+            playTone(500, 0.05);
+
+            if (foodCount >= 3) {
+                petStage++;
+                foodCount = 0;
+                confetti({
+                    particleCount: 80,
+                    spread: 50,
+                    colors: ['#f59e0b', '#fbbf24', '#fcd34d']
+                });
+
+                if (petStage === 2) {
+                    petAvatar.innerText = '🦁';
+                    petName.innerText = 'Lion';
+                    atk.innerText = '45';
+                    hp.innerText = '250';
+                    cardLvl.innerText = '2';
+                    evolveHint.innerText = '餵食 3 個單字飼料可讓獅子進化為夢幻神獸！';
+                    evolveButton.innerText = '餵食飼料 🍖 (已有: 0/3)';
+                    alert('🎉 恭喜！小貓進化成小獅子了！能力大幅提升！');
+                } else if (petStage === 3) {
+                    petAvatar.innerText = '🐉';
+                    petName.innerText = 'Dragon';
+                    atk.innerText = '99';
+                    hp.innerText = '600';
+                    cardLvl.innerText = '3';
+                    evolveHint.innerText = '已進化至最終形態：龍神！';
+                    evolveButton.innerText = '已達最高等級 🌟';
+                    evolveButton.disabled = true;
+                    alert('🎉 太不可思議了！獅子進化成了終極火龍！');
+                }
+            } else {
+                evolveButton.innerText = `餵食飼料 🍖 (已有: ${foodCount}/3)`;
+            }
+        }
+
+        // Simple Tone generator for retro feels
+        let audioCtx;
+        function playTone(freq, duration) {
+            try {
+                if (!audioCtx) {
+                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.frequency.value = freq;
+                gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
+                osc.start();
+                osc.stop(audioCtx.currentTime + duration);
+            } catch (e) {
+                console.warn(e);
+            }
+        }
+    </script>
+</body>
+</html>
