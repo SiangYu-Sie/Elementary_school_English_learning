@@ -1,73 +1,96 @@
-# React + TypeScript + Vite
+# 🔮 英文單字魔法學院 (Elementary School English Learning)
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+一個專為國小學童設計的**國小英語趣味學習網站**。將枯燥的英文單字背誦，轉化為熱血的 **RPG 角色扮演與卡牌對決冒險**！學童可以透過單字學習、打怪獸測驗挑戰賺取金幣與經驗值，並利用金幣抽取具備魔法屬性的寵物、進行融合升級、攜帶寵物出戰擊敗強大的魔王！
 
-Currently, two official plugins are available:
+👉 **線上試玩網址**：[點我進入英文單字魔法學院](https://siangyu-sie.github.io/Elementary_school_English_learning/)
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+---
 
-## React Compiler
+## 🎮 專案設計概念與核心特色
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+為了提高國小學童的學習主動性，本網站圍繞「**學習即遊戲 (Gamified Learning)**」的核心概念進行開發：
 
-## Expanding the ESLint configuration
+### 1. 📖 康軒三年級教材單字庫 (Level 1 ~ 5)
+*   **單字量擴充**：每個學習難度均擴充至 **30 個單字**（5 個等級共 **150 個單字**），內容精選自康軒三年級英文教材，涵蓋數字、顏色、文具、動物、家庭成員、身體部位與動作。
+*   **字卡探索模式**：點擊字卡會播放標準美式發音，並提供單字例句與中文對照。
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+### 2. 👾 怪獸挑戰測驗與動態進化機制
+*   **四種題目類型**：選擇題（英選中 / 中選英）、聽力測驗（聽音選英單，播放音檔時去除了拼讀以防洩題）與填空挑戰（單字挖空拼寫，限填 1 個字母）。
+*   **怪獸三階進化**：根據玩家對該 Level 的**累計挑戰次數**，怪獸會展現不同的生命值與外觀：
+    *   **挑戰 0 ~ 4 次 (幼年形態 🌱)**：如「綠野史萊姆」，HP 100。
+    *   **挑戰 5 ~ 9 次 (進階形態 👾)**：如「狂暴綠野精靈」，HP 250。
+    *   **挑戰 10 次以上 (終極形態 🐉)**：進化為超強大魔王「遠古毒綠魔龍」，HP 600！
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+### 3. 🔮 魔法扭蛋屋與卡牌圖鑑 (金幣用途)
+*   **扭蛋機制**：每次測驗答對可以賺取金幣，花費 **50 金幣** 即可啟動魔法扭蛋機，隨機抽取具備不同魔法屬性的珍奇寵物卡牌：
+    *   **普通 (Common, 70%)**：如 🐱 淘氣小貓、🐶 忠誠小狗。
+    *   **史詩 (Epic, 25%)**：如 🦁 萬獸之王、🦄 彩虹獨角獸。
+    *   **傳說 (Legendary, 5%)**：如 🐉 烈焰巨龍、👑 黃金國王。
+*   **卡牌屬性**：每張卡牌皆有獨立的 **攻擊力 (ATK)** 與 **生命值 (HP)**。
+*   **卡牌收集圖鑑**：未解鎖的寵物會以黑白磨砂玻璃感呈現，解鎖後則秀出卡面與數值，引導學童持續挑戰以收集全部圖鑑。
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+### 4. ⚔️ 寵物實戰對決與融合升級 (新增深度玩法)
+*   **設定出戰**：玩家可在圖鑑中將心愛的寵物「設定為出戰寵物」。出戰後，頂端導航列的玩家頭像會立刻變身成該寵物的 Emoji 貼身陪伴！
+*   **融合升級系統**：重複抽到的卡牌可用於升級！消耗 **30 金幣** 與 1 張重複卡牌，即可為寵物進行融合升級（`Lv.1` ➔ `Lv.2`），每次升級提升 **20% 的 ATK 與 HP 屬性**！
+*   **實戰雙方對決**：
+    *   **答對攻擊**：答對單字時，出戰寵物會對怪獸進行攻擊，造成 `基礎傷害 + 寵物 ATK` 的加乘傷害！
+    *   **答錯受傷**：答錯時，怪獸會反擊，優先扣減出戰寵物的 HP（傷害值隨關卡 Level 提高）。若寵物 HP 被扣光倒下，才會開始扣減玩家的心心。
+    *   **提早 K.O. 勝利**：當你培養的寵物攻擊力足夠高，在 10 題測驗結束前將怪獸 HP 扣至 0，即可達成 K.O. 提早獲勝！
+    *   **K.O. 額外獎勵**：擊敗怪獸可額外獲得 **+50 EXP** 與 **+30 金幣** 的豐厚結算加成。
+*   **戰鬥實體特效**：對決時，畫面上方會配合攻擊/受傷動畫，飄浮彈出實體傷害數字（例如 `-109 HP 💥`）。
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+---
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## 🛠️ 技術架構
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+*   **前端核心**：React 19 + TypeScript + Vite 8
+*   **介面樣式**：Vanilla CSS 3（精心設計的遊戲化 UI、微動畫與玻璃擬態 Dark/Fancy 風格）
+*   **圖標套件**：Lucide React
+*   **動畫效果**：Canvas Confetti
+*   **資料儲存**：雙模式相容機制（LocalStorage 離線資料庫 / Supabase 雲端資料庫支援）
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+---
+
+## 📈 修改與開發日誌 (Changelog)
+
+### Phase 1: 基礎學習與測驗擴充
+- [x] 單字量擴充：每個 Level 均實作 30 個單字（共 150 個單字）。
+- [x] 聽力測驗優化：去除單字逐字拼讀，避免聽力選擇題洩題。
+- [x] 每輪測驗題數調整為 10 題。
+
+### Phase 2: 遊戲化框架與金幣扭蛋
+- [x] 實作怪獸三階進化機制，依挑戰次數更換怪獸 Emoji、名稱與 HP。
+- [x] 建立「魔法扭蛋屋」與「卡牌圖鑑」，可用金幣抽寵物卡牌。
+- [x] 結合 Web Audio API 合成電子遊戲音效與紙花特效。
+
+### Phase 3: 寵物出戰與卡牌升級實戰 (最新更新)
+- [x] 實作卡牌融合升級：消耗重複卡片與 30 金幣提升寵物 Lv，屬性加成 20%。
+- [x] 實作設定出戰寵物，並與頂部導航列頭像聯動。
+- [x] 實作雙方對決競技場 UI（寵物 VS 進化怪獸）與戰鬥日誌。
+- [x] 實作寵物 ATK 傷害加成、怪獸反擊寵物 HP 機制。
+- [x] 實作 K.O. 提早獲勝機制與 +50 EXP / +30 金幣額外獎勵。
+- [x] 實作攻擊/受傷飄浮傷害文字動畫。
+
+---
+
+## 🚀 本地開發與部署說明
+
+### 本地運行
+1. 克隆專案：
+   ```bash
+   git clone https://github.com/SiangYu-Sie/Elementary_school_English_learning.git
+   ```
+2. 安裝套件：
+   ```bash
+   npm install
+   ```
+3. 啟動開發伺服器：
+   ```bash
+   npm run dev
+   ```
+
+### 部署至 GitHub Pages
+專案已配置 `gh-pages` 部署腳本，可直接執行以下指令進行編譯並發布更新：
+```bash
+npm run deploy
 ```
