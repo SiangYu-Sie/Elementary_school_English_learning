@@ -1,6 +1,8 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { BookOpen, Award, BarChart2, LogOut, Sparkles, ShoppingBag } from "lucide-react";
+import { dbService } from "../../services/db";
+import { GACHA_CARDS } from "../Learning/MagicShop";
 
 interface NavbarProps {
   activeTab: "learn" | "quiz" | "dashboard" | "shop";
@@ -9,6 +11,22 @@ interface NavbarProps {
 
 export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
   const { user, signOut } = useAuth();
+  const [activePetEmoji, setActivePetEmoji] = useState<string | null>(null);
+
+  useEffect(() => {
+    const loadActivePet = async () => {
+      if (user) {
+        const activeId = await dbService.getActiveCard(user.id);
+        if (activeId) {
+          const card = GACHA_CARDS.find(c => c.id === activeId);
+          setActivePetEmoji(card ? card.emoji : null);
+        } else {
+          setActivePetEmoji(null);
+        }
+      }
+    };
+    loadActivePet();
+  }, [user, activeTab]);
 
   return (
     <nav className="main-navbar">
@@ -68,7 +86,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
             </div>
 
             <div className="user-avatar-badge">
-              {user.role === "student" ? "👶" : user.role === "teacher" ? "🧑‍🏫" : "👪"}
+              {activePetEmoji ? activePetEmoji : (user.role === "student" ? "👶" : user.role === "teacher" ? "🧑‍🏫" : "👪")}
             </div>
             <div className="user-details-hidden-mobile">
               <span className="user-name">{user.displayName}</span>

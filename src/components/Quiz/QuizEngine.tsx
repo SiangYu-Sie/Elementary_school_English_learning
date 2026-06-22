@@ -4,6 +4,7 @@ import { useAuth } from "../../context/AuthContext";
 import { dbService } from "../../services/db";
 import { Volume2, Award, RefreshCw, Star, Play, CheckCircle2, XCircle } from "lucide-react";
 import confetti from "canvas-confetti";
+import { GACHA_CARDS, getCardStats } from "../Learning/MagicShop";
 
 interface QuizEngineProps {
   words: Word[];
@@ -37,10 +38,42 @@ export const QuizEngine: React.FC<QuizEngineProps> = ({ words, level, onFinished
   const [loading, setLoading] = useState(false);
   const [rewards, setRewards] = useState<{ expGained: number; coinsGained: number; leveledUp: boolean } | null>(null);
   const [monsterHp, setMonsterHp] = useState(100);
+  const [maxMonsterHp, setMaxMonsterHp] = useState(100);
   const [playerHp, setPlayerHp] = useState(100);
   const [isMonsterDamaged, setIsMonsterDamaged] = useState(false);
   const [isPlayerDamaged, setIsPlayerDamaged] = useState(false);
   const [attemptsCount, setAttemptsCount] = useState(0);
+
+  // RPG Combat Pets States
+  const [activeCard, setActiveCard] = useState<any | null>(null);
+  const [cardStats, setCardStats] = useState<{ atk: number; hp: number } | null>(null);
+  const [petHp, setPetHp] = useState(100);
+  const [maxPetHp, setMaxPetHp] = useState(100);
+  const [battleLogs, setBattleLogs] = useState<string[]>([]);
+  const [combatDamageText, setCombatDamageText] = useState<{ target: "monster" | "player" | "pet" | null; amount: number }>({ target: null, amount: 0 });
+  const [isKo, setIsKo] = useState(false);
+
+  const loadActiveCard = async () => {
+    if (user) {
+      const activeId = await dbService.getActiveCard(user.id);
+      if (activeId) {
+        const originalCard = GACHA_CARDS.find(c => c.id === activeId);
+        if (originalCard) {
+          const inventory = await dbService.getCardInventory(user.id);
+          const invItem = inventory.find(i => i.cardId === activeId);
+          const cardLvl = invItem?.level ?? 1;
+          const stats = getCardStats(originalCard.atk, originalCard.hp, cardLvl);
+          setActiveCard({ ...originalCard, level: cardLvl });
+          setCardStats(stats);
+          setPetHp(stats.hp);
+          setMaxPetHp(stats.hp);
+          return;
+        }
+      }
+    }
+    setActiveCard(null);
+    setCardStats(null);
+  };
 
   useEffect(() => {
     const fetchAttempts = async () => {
@@ -134,11 +167,13 @@ export const QuizEngine: React.FC<QuizEngineProps> = ({ words, level, onFinished
   };
 
   // Generate a random set of 10 questions
-  const startQuiz = () => {
+  const startQuiz = async () => {
     if (words.length < 10) {
       alert("單字庫數量不足，無法生成測驗（至少需要 10 個單字）。");
       return;
     }
+
+    await loadActiveCard();
 
     // Pick 10 random words (or less if words count is less than 10)
     const shuffledWords = [...words].sort(() => 0.5 - Math.random());
@@ -200,6 +235,11 @@ export const QuizEngine: React.FC<QuizEngineProps> = ({ words, level, onFinished
       };
     });
 
+    const stage = attemptsCount >= 10 ? 3 : attemptsCount >= 5 ? 2 : 1;
+    let initialMonsterHp = 100;
+    if (stage === 2) initialMonsterHp = 250;
+    if (stage === 3) initialMonsterHp = 600;
+
     setQuestions(generatedQuestions);
     setCurrentIdx(0);
     setAnswers([]);
@@ -209,8 +249,11 @@ export const QuizEngine: React.FC<QuizEngineProps> = ({ words, level, onFinished
     setSelectedOption(null);
     setSpellingInput("");
     setRewards(null);
-    setMonsterHp(100);
+    setMonsterHp(initialMonsterHp);
+    setMaxMonsterHp(initialMonsterHp);
     setPlayerHp(100);
+    setIsKo(false);
+    setBattleLogs(["⚔️ 戰鬥開始！怪獸發出了咆哮！"]);
     setIsMonsterDamaged(false);
     setIsPlayerDamaged(false);
   };
@@ -231,18 +274,57 @@ export const QuizEngine: React.FC<QuizEngineProps> = ({ words, level, onFinished
     setIsAnswered(true);
     speak(currentQ.word.word);
 
-    const damagePerQuestion = Math.round(100 / questions.length);
-
     if (correct) {
       playCorrectSound();
+      
+      const baseDamage = 15;
+      const petDamage = cardStats ? cardStats.atk : 0;
+      const totalDamage = baseDamage + petDamage;
+
       setIsMonsterDamaged(true);
-      setMonsterHp((prev) => Math.max(0, prev - damagePerQuestion));
-      setTimeout(() => setIsMonsterDamaged(false), 500);
+      setMonsterHp((prev) => {
+        const remaining = Math.max(0, prev - totalDamage);
+        if (remaining === 0 && !isKo) {
+          setIsKo(true);
+          setBattleLogs(prevLogs => [...prevLogs, `💥 K.O.！出戰寵物與你合力擊敗了 ${monster.name}！`]);
+        }
+        return remaining;
+      });
+
+      setCombatDamageText({ target: "monster", amount: totalDamage });
+      setBattleLogs(prevLogs => [...prevLogs, `🎯 答對了！${activeCard ? activeCard.name : "你"} 對怪獸造成了 ${totalDamage} 點傷害！`]);
+      
+      setTimeout(() => {
+        setIsMonsterDamaged(false);
+        setCombatDamageText({ target: null, amount: 0 });
+      }, 800);
     } else {
       playIncorrectSound();
-      setIsPlayerDamaged(true);
-      setPlayerHp((prev) => Math.max(0, prev - damagePerQuestion));
-      setTimeout(() => setIsPlayerDamaged(false), 500);
+      
+      const monsterDamage = 10 * level;
+
+      if (activeCard && petHp > 0) {
+        setIsPlayerDamaged(true);
+        setPetHp((prev) => {
+          const remaining = Math.max(0, prev - monsterDamage);
+          if (remaining === 0) {
+            setBattleLogs(prevLogs => [...prevLogs, `💀 哎呀！你的出戰寵物 ${activeCard.name} 倒下了！`]);
+          }
+          return remaining;
+        });
+        setCombatDamageText({ target: "pet", amount: monsterDamage });
+        setBattleLogs(prevLogs => [...prevLogs, `⚡ 答錯了！怪獸發動反擊，對 ${activeCard.name} 造成 ${monsterDamage} 點傷害！`]);
+      } else {
+        setIsPlayerDamaged(true);
+        setPlayerHp((prev) => Math.max(0, prev - 15));
+        setCombatDamageText({ target: "player", amount: 15 });
+        setBattleLogs(prevLogs => [...prevLogs, `⚡ 答錯了！怪獸攻擊了你，造成 15 點傷害！`]);
+      }
+
+      setTimeout(() => {
+        setIsPlayerDamaged(false);
+        setCombatDamageText({ target: null, amount: 0 });
+      }, 800);
     }
 
     setAnswers((prev) => [...prev, { wordId: currentQ.word.id, isCorrect: correct }]);
@@ -252,16 +334,16 @@ export const QuizEngine: React.FC<QuizEngineProps> = ({ words, level, onFinished
     if ("speechSynthesis" in window) {
       window.speechSynthesis.cancel();
     }
-    if (currentIdx + 1 < questions.length) {
+    if (monsterHp <= 0 || isKo || currentIdx + 1 >= questions.length) {
+      // Quiz Finished Early (K.O.) or Normal End
+      const durationSeconds = Math.round((Date.now() - startTime) / 1000);
+      setDuration(durationSeconds);
+      finishQuiz(durationSeconds);
+    } else {
       setCurrentIdx((prev) => prev + 1);
       setIsAnswered(false);
       setSelectedOption(null);
       setSpellingInput("");
-    } else {
-      // Quiz Finished
-      const durationSeconds = Math.round((Date.now() - startTime) / 1000);
-      setDuration(durationSeconds);
-      finishQuiz(durationSeconds);
     }
   };
 
@@ -269,9 +351,10 @@ export const QuizEngine: React.FC<QuizEngineProps> = ({ words, level, onFinished
     setGameState("results");
     const correctCount = answers.filter((a) => a.isCorrect).length;
     const finalScore = Math.round((correctCount / questions.length) * 100);
+    const isMonsterDefeated = monsterHp <= 0 || isKo;
 
-    let expGained = (correctCount * 10) + (correctCount === questions.length ? 30 : 0);
-    let coinsGained = (correctCount * 5) + (correctCount === questions.length ? 15 : 0);
+    let expGained = (correctCount * 10) + (correctCount === questions.length ? 30 : 0) + (isMonsterDefeated ? 50 : 0);
+    let coinsGained = (correctCount * 5) + (correctCount === questions.length ? 15 : 0) + (isMonsterDefeated ? 30 : 0);
     let leveledUp = false;
 
     if (user) {
@@ -283,7 +366,8 @@ export const QuizEngine: React.FC<QuizEngineProps> = ({ words, level, onFinished
           correctCount,
           questions.length,
           durationSecs,
-          answers
+          answers,
+          isMonsterDefeated
         );
 
         expGained = result.expGained ?? expGained;
@@ -519,22 +603,87 @@ export const QuizEngine: React.FC<QuizEngineProps> = ({ words, level, onFinished
         </div>
       </div>
 
-      {/* 核心怪獸對決區 (與計畫書一致) */}
+      {/* 雙方對決競技場 */}
       <div className={`rpg-battle-arena-center ${isPlayerDamaged ? "flash-red-bg" : ""}`}>
-        <div className={`rpg-monster-display ${isMonsterDamaged ? "animate-shake damaged" : ""}`}>
-          <div className="rpg-monster-emoji-large">{monster.emoji}</div>
-          <div className="rpg-monster-hp-container">
-            <div className="rpg-monster-hp-bar">
-              <div className="rpg-monster-hp-fill" style={{ width: `${monsterHp}%` }}></div>
-            </div>
-            <span className="rpg-monster-hp-text">{monsterHp}/100 HP</span>
+        <div className="rpg-arena-split">
+          
+          {/* 左側：出戰寵物 */}
+          <div className={`rpg-combatant-box pet-combatant ${isPlayerDamaged ? "animate-shake damaged" : ""}`}>
+            {activeCard ? (
+              <>
+                <div className="combatant-label">🛡️ 你的寵物</div>
+                <div className="rpg-combatant-emoji">{activeCard.emoji}</div>
+                <div className="rpg-monster-hp-container">
+                  <div className="rpg-monster-hp-bar player-pet-hp">
+                    <div className="rpg-monster-hp-fill" style={{ width: `${(petHp / maxPetHp) * 100}%` }}></div>
+                  </div>
+                  <span className="rpg-monster-hp-text">{petHp}/{maxPetHp} HP</span>
+                </div>
+                <h4 className="rpg-combatant-name">
+                  {activeCard.name} <span className="combat-level-tag">Lv.{activeCard.level}</span>
+                </h4>
+                <div className="combat-stats-row">
+                  <span>⚔️ ATK: {cardStats?.atk}</span>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="combatant-label">🧙‍♂️ 冒險家</div>
+                <div className="rpg-combatant-emoji">👦</div>
+                <div className="rpg-monster-hp-container">
+                  <div className="rpg-monster-hp-bar">
+                    <div className="rpg-monster-hp-fill" style={{ width: `${playerHp}%` }}></div>
+                  </div>
+                  <span className="rpg-monster-hp-text">{playerHp}/100 HP</span>
+                </div>
+                <h4 className="rpg-combatant-name">{user?.displayName}</h4>
+                <div className="combat-stats-row">
+                  <span>⚔️ ATK: 15</span>
+                </div>
+              </>
+            )}
+            
+            {/* 飄浮傷害數字 (寵物或玩家) */}
+            {combatDamageText.target === (activeCard && petHp > 0 ? "pet" : "player") && (
+              <div className="floating-damage-text take-damage-anim">
+                -{combatDamageText.amount} HP
+              </div>
+            )}
           </div>
-          <h3 className="rpg-monster-name-title">
-            {monster.name} (Lv.{level}) - <span className="rpg-monster-stage-tag">{monster.stageName}</span> 
-            <span className="rpg-attempts-count" style={{ fontSize: "0.85rem", color: "var(--color-text-muted)", marginLeft: "8px", fontWeight: "normal" }}>
-              (已挑戰: {attemptsCount} 次)
-            </span>
-          </h3>
+
+          {/* 中間 V.S. 標誌與日誌 */}
+          <div className="rpg-vs-separator">
+            <div className="vs-badge-circle">VS</div>
+            <div className="combat-logs-ticker">
+              {battleLogs.slice(-2).map((log, idx) => (
+                <div key={idx} className="ticker-log-item">{log}</div>
+              ))}
+            </div>
+          </div>
+
+          {/* 右側：進化怪獸 */}
+          <div className={`rpg-combatant-box monster-combatant ${isMonsterDamaged ? "animate-shake damaged" : ""}`}>
+            <div className="combatant-label">{monster.stageName}</div>
+            <div className="rpg-combatant-emoji">{monster.emoji}</div>
+            <div className="rpg-monster-hp-container">
+              <div className="rpg-monster-hp-bar">
+                <div className="rpg-monster-hp-fill" style={{ width: `${(monsterHp / maxMonsterHp) * 100}%` }}></div>
+              </div>
+              <span className="rpg-monster-hp-text">{monsterHp}/{maxMonsterHp} HP</span>
+            </div>
+            <h4 className="rpg-combatant-name">{monster.name}</h4>
+            <div className="combat-stats-row">
+              <span>👾 挑戰次數: {attemptsCount}</span>
+            </div>
+            
+            {/* 飄浮傷害數字 (怪獸) */}
+            {combatDamageText.target === "monster" && (
+              <div className="floating-damage-text deal-damage-anim">
+                -{combatDamageText.amount} HP 💥
+              </div>
+            )}
+          </div>
+
         </div>
       </div>
 

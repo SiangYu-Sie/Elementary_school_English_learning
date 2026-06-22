@@ -11,6 +11,12 @@ export interface UserProfile {
   level: number;
 }
 
+export interface CardInventoryItem {
+  cardId: string;
+  count: number;
+  level: number;
+}
+
 export interface QuizRecord {
   id: string;
   userId: string;
@@ -223,13 +229,17 @@ export const dbService = {
     correctCount: number,
     totalCount: number,
     durationSeconds: number,
-    wordResults: WordResultInput[]
+    wordResults: WordResultInput[],
+    isMonsterDefeated = false
   ): Promise<QuizRecord> {
     const score = Math.round((correctCount / totalCount) * 100);
     
     // RPG reward logic: 10 EXP, 5 coins per correct answer. Full score bonus: +30 EXP, +15 coins.
-    const expGained = (correctCount * 10) + (correctCount === totalCount ? 30 : 0);
-    const coinsGained = (correctCount * 5) + (correctCount === totalCount ? 15 : 0);
+    // If monster is defeated, get extra +50 EXP and +30 coins!
+    const koExpBonus = isMonsterDefeated ? 50 : 0;
+    const koCoinsBonus = isMonsterDefeated ? 30 : 0;
+    const expGained = (correctCount * 10) + (correctCount === totalCount ? 30 : 0) + koExpBonus;
+    const coinsGained = (correctCount * 5) + (correctCount === totalCount ? 15 : 0) + koCoinsBonus;
     let leveledUp = false;
 
     if (isSupabaseConfigured()) {
@@ -499,13 +509,93 @@ export const dbService = {
     return data ? JSON.parse(data) : [];
   },
 
-  async unlockCard(userId: string, cardId: string): Promise<string[]> {
-    const key = `unlocked_cards_${userId}`;
-    const current = await this.getUnlockedCards(userId);
-    if (!current.includes(cardId)) {
-      current.push(cardId);
-      localStorage.setItem(key, JSON.stringify(current));
+  async getCardInventory(userId: string): Promise<CardInventoryItem[]> {
+    const key = `card_inventory_${userId}`;
+    const data = localStorage.getItem(key);
+    if (data) {
+      return JSON.parse(data);
     }
-    return current;
+    
+    // 向下相容
+    const legacyCards = await this.getUnlockedCards(userId);
+    const initialInventory: CardInventoryItem[] = legacyCards.map(cid => ({
+      cardId: cid,
+      count: 1,
+      level: 1
+    }));
+    localStorage.setItem(key, JSON.stringify(initialInventory));
+    return initialInventory;
+  },
+
+  async unlockCard(userId: string, cardId: string): Promise<string[]> {
+    // 1. 維護舊的 unlocked_cards 相容舊程式碼
+    const keyLegacy = `unlocked_cards_${userId}`;
+    const legacyList = await this.getUnlockedCards(userId);
+    if (!legacyList.includes(cardId)) {
+      legacyList.push(cardId);
+      localStorage.setItem(keyLegacy, JSON.stringify(legacyList));
+    }
+
+    // 2. 維護新的 card_inventory 格式
+    const keyInventory = `card_inventory_${userId}`;
+    const inventory = await this.getCardInventory(userId);
+    const existing = inventory.find(item => item.cardId === cardId);
+    if (existing) {
+      existing.count += 1;
+    } else {
+      inventory.push({ cardId, count: 1, level: 1 });
+    }
+    localStorage.setItem(keyInventory, JSON.stringify(inventory));
+
+    return legacyList;
+  },
+
+  async upgradeCard(userId: string, cardId: string, goldCost: number): Promise<{ success: boolean; newLevel: number; newCount: number; message?: string }> {
+    const userProfile = await this.getCurrentUser();
+    if (!userProfile || userProfile.coins < goldCost) {
+      return { success: false, newLevel: 1, newCount: 0, message: "金幣不足！" };
+    }
+
+    const keyInventory = `card_inventory_${userId}`;
+    const inventory = await this.getCardInventory(userId);
+    const card = inventory.find(item => item.cardId === cardId);
+    if (!card) {
+      return { success: false, newLevel: 1, newCount: 0, message: "找不到該卡牌" };
+    }
+    if (card.count <= 1) {
+      return { success: false, newLevel: card.level, newCount: card.count, message: "重複的卡牌數量不足，需要至少 2 張卡牌才能融合！" };
+    }
+
+    // 扣除金幣
+    try {
+      await this.deductCoins(userId, goldCost);
+    } catch (e) {
+      return { success: false, newLevel: card.level, newCount: card.count, message: "扣除金幣失敗" };
+    }
+
+    card.level += 1;
+    card.count -= 1;
+    localStorage.setItem(keyInventory, JSON.stringify(inventory));
+
+    return {
+      success: true,
+      newLevel: card.level,
+      newCount: card.count
+    };
+  },
+
+  async getActiveCard(userId: string): Promise<string | null> {
+    const key = `active_card_${userId}`;
+    return localStorage.getItem(key);
+  },
+
+  async setActiveCard(userId: string, cardId: string | null): Promise<string | null> {
+    const key = `active_card_${userId}`;
+    if (cardId === null) {
+      localStorage.removeItem(key);
+    } else {
+      localStorage.setItem(key, cardId);
+    }
+    return cardId;
   }
 };

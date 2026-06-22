@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../../context/AuthContext";
-import { dbService } from "../../services/db";
-import { Sparkles, Coins, Trophy } from "lucide-react";
+import { dbService, type CardInventoryItem } from "../../services/db";
+import { Sparkles, Coins, Trophy, ShieldAlert } from "lucide-react";
 import confetti from "canvas-confetti";
 
 export interface GachaCard {
@@ -41,22 +41,41 @@ export const GACHA_CARDS: GachaCard[] = [
   { id: "l-5", name: "黃金國王", english: "king", emoji: "👑", rarity: "legendary", rarityName: "傳說", rarityColor: "#f59e0b", atk: 70, hp: 1000 }
 ];
 
+export const getCardStats = (baseAtk: number, baseHp: number, level: number) => {
+  const multiplier = 1 + (level - 1) * 0.2;
+  return {
+    atk: Math.round(baseAtk * multiplier),
+    hp: Math.round(baseHp * multiplier)
+  };
+};
+
 export const MagicShop: React.FC = () => {
   const { user, refreshUser } = useAuth();
   const [unlockedIds, setUnlockedIds] = useState<string[]>([]);
+  const [inventory, setInventory] = useState<CardInventoryItem[]>([]);
+  const [activeCardId, setActiveCardId] = useState<string | null>(null);
+  
   const [isSpinning, setIsSpinning] = useState(false);
   const [gachaResult, setGachaResult] = useState<GachaCard | null>(null);
   const [loading, setLoading] = useState(false);
+  const [selectedCard, setSelectedCard] = useState<GachaCard | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Load unlocked cards on mount
+  const UPGRADE_COST = 30; // 融合升級金幣消耗
+
+  const loadData = async () => {
+    if (user) {
+      const inv = await dbService.getCardInventory(user.id);
+      setInventory(inv);
+      const activeId = await dbService.getActiveCard(user.id);
+      setActiveCardId(activeId);
+      const cards = await dbService.getUnlockedCards(user.id);
+      setUnlockedIds(cards);
+    }
+  };
+
   useEffect(() => {
-    const loadCards = async () => {
-      if (user) {
-        const cards = await dbService.getUnlockedCards(user.id);
-        setUnlockedIds(cards);
-      }
-    };
-    loadCards();
+    loadData();
   }, [user]);
 
   const drawCard = async () => {
@@ -66,13 +85,11 @@ export const MagicShop: React.FC = () => {
     setIsSpinning(true);
     setGachaResult(null);
 
-    // Audio effect: Spinning tone
     playSpinTone();
 
-    // Deduct coins from db
     try {
       await dbService.deductCoins(user.id, 50);
-      await refreshUser(); // Update navbar
+      await refreshUser(); 
     } catch (e) {
       console.error("金幣扣除失敗", e);
       setIsSpinning(false);
@@ -80,31 +97,28 @@ export const MagicShop: React.FC = () => {
       return;
     }
 
-    // Determine card rarity based on probability
     setTimeout(async () => {
       const rand = Math.random() * 100;
       let selectedRarity: "common" | "epic" | "legendary" = "common";
       
       if (rand < 5) {
-        selectedRarity = "legendary"; // 5%
+        selectedRarity = "legendary"; 
       } else if (rand < 30) {
-        selectedRarity = "epic"; // 25%
+        selectedRarity = "epic"; 
       } else {
-        selectedRarity = "common"; // 70%
+        selectedRarity = "common"; 
       }
 
-      // Filter cards by determined rarity
       const matchingCards = GACHA_CARDS.filter(c => c.rarity === selectedRarity);
       const drawn = matchingCards[Math.floor(Math.random() * matchingCards.length)];
 
-      // Unlock in db
-      const newUnlocked = await dbService.unlockCard(user.id, drawn.id);
-      setUnlockedIds(newUnlocked);
+      await dbService.unlockCard(user.id, drawn.id);
+      await loadData(); // Reload inventory info
+
       setGachaResult(drawn);
       setIsSpinning(false);
       setLoading(false);
 
-      // Play confetti and win sound based on rarity
       if (selectedRarity === "legendary") {
         playLegendaryWinSound();
         confetti({ particleCount: 200, spread: 100, origin: { y: 0.6 } });
@@ -114,7 +128,41 @@ export const MagicShop: React.FC = () => {
       } else {
         playCommonWinSound();
       }
-    }, 2000); // 2 seconds spin duration
+    }, 2000); 
+  };
+
+  // Toggle active card
+  const handleToggleActive = async (cardId: string) => {
+    if (!user) return;
+    const isCurrentlyActive = activeCardId === cardId;
+    const newActiveId = isCurrentlyActive ? null : cardId;
+    
+    await dbService.setActiveCard(user.id, newActiveId);
+    setActiveCardId(newActiveId);
+    playCommonWinSound();
+  };
+
+  // Upgrade card
+  const handleUpgradeCard = async (cardId: string) => {
+    if (!user) return;
+    setErrorMessage(null);
+
+    const res = await dbService.upgradeCard(user.id, cardId, UPGRADE_COST);
+    if (res.success) {
+      confetti({ particleCount: 80, spread: 60, colors: ["#a855f7", "#6366f1", "#f59e0b"] });
+      playEpicWinSound();
+      await refreshUser();
+      await loadData();
+      
+      // Update selected card state to show new stats
+      const originalCard = GACHA_CARDS.find(c => c.id === cardId);
+      if (originalCard) {
+        setSelectedCard(originalCard);
+      }
+    } else {
+      setErrorMessage(res.message || "升級失敗");
+      playErrorSound();
+    }
   };
 
   // Synthesizer Audio Tones
@@ -127,7 +175,7 @@ export const MagicShop: React.FC = () => {
       osc.connect(gain);
       gain.connect(ctx.destination);
       osc.frequency.setValueAtTime(300 + i * 50, time + i * 0.15);
-      gain.gain.setValueAtTime(0.05, time + i * 0.15);
+      gain.gain.setValueAtTime(0.03, time + i * 0.15);
       gain.gain.exponentialRampToValueAtTime(0.0001, time + i * 0.15 + 0.15);
       osc.start(time + i * 0.15);
       osc.stop(time + i * 0.15 + 0.15);
@@ -140,8 +188,8 @@ export const MagicShop: React.FC = () => {
     let gain = ctx.createGain();
     osc.connect(gain);
     gain.connect(ctx.destination);
-    osc.frequency.value = 523.25; // C5
-    gain.gain.setValueAtTime(0.05, ctx.currentTime);
+    osc.frequency.value = 523.25; 
+    gain.gain.setValueAtTime(0.04, ctx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.2);
     osc.start();
     osc.stop(ctx.currentTime + 0.2);
@@ -149,7 +197,7 @@ export const MagicShop: React.FC = () => {
 
   const playEpicWinSound = () => {
     let ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-    let tones = [523.25, 659.25, 783.99]; // C5, E5, G5
+    let tones = [523.25, 659.25, 783.99]; 
     tones.forEach((freq, idx) => {
       setTimeout(() => {
         let osc = ctx.createOscillator();
@@ -157,7 +205,7 @@ export const MagicShop: React.FC = () => {
         osc.connect(gain);
         gain.connect(ctx.destination);
         osc.frequency.value = freq;
-        gain.gain.setValueAtTime(0.06, ctx.currentTime);
+        gain.gain.setValueAtTime(0.05, ctx.currentTime);
         gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.25);
         osc.start();
         osc.stop(ctx.currentTime + 0.25);
@@ -167,7 +215,7 @@ export const MagicShop: React.FC = () => {
 
   const playLegendaryWinSound = () => {
     let ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-    let tones = [261.63, 329.63, 392.00, 523.25, 659.25, 783.99, 1046.50]; // C4 to C6 arpeggio
+    let tones = [261.63, 329.63, 392.00, 523.25, 659.25, 783.99, 1046.50]; 
     tones.forEach((freq, idx) => {
       setTimeout(() => {
         let osc = ctx.createOscillator();
@@ -175,12 +223,25 @@ export const MagicShop: React.FC = () => {
         osc.connect(gain);
         gain.connect(ctx.destination);
         osc.frequency.value = freq;
-        gain.gain.setValueAtTime(0.08, ctx.currentTime);
+        gain.gain.setValueAtTime(0.06, ctx.currentTime);
         gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.3);
         osc.start();
         osc.stop(ctx.currentTime + 0.3);
       }, idx * 80);
     });
+  };
+
+  const playErrorSound = () => {
+    let ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    let osc = ctx.createOscillator();
+    let gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.frequency.value = 180;
+    gain.gain.setValueAtTime(0.08, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.35);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.35);
   };
 
   return (
@@ -190,7 +251,7 @@ export const MagicShop: React.FC = () => {
         <h2>魔法扭蛋屋 🔮</h2>
       </div>
       <p className="shop-subtitle">
-        使用你挑戰答對獲得的黃金金幣，抽取具備不同魔法屬性的珍奇寵物卡牌！
+        使用你挑戰答對獲得的黃金金幣，抽取與強化具備不同魔法屬性的珍奇寵物卡牌！
       </p>
 
       {/* Gacha Machine Panel */}
@@ -201,7 +262,6 @@ export const MagicShop: React.FC = () => {
         </div>
 
         <div className="gacha-arena">
-          {/* Machine Graphic */}
           <div className="gacha-machine-display">
             <div className={`gacha-capsule-ball ${isSpinning ? "capsule-spinning" : ""}`}>
               {isSpinning ? "🔮" : gachaResult ? gachaResult.emoji : "🔮"}
@@ -209,7 +269,6 @@ export const MagicShop: React.FC = () => {
             <div className="gacha-pedestal">✨ 魔法扭蛋機 ✨</div>
           </div>
 
-          {/* Controls */}
           <div className="gacha-controls">
             {user && user.coins < 50 ? (
               <p className="gacha-warning">⚠️ 金幣不足！每次扭蛋需要 50 金幣，快去「單字挑戰」打怪賺錢吧！</p>
@@ -269,16 +328,36 @@ export const MagicShop: React.FC = () => {
         <div className="album-grid">
           {GACHA_CARDS.map(card => {
             const isUnlocked = unlockedIds.includes(card.id);
+            const invItem = inventory.find(i => i.cardId === card.id);
+            const level = invItem?.level ?? 1;
+            const count = invItem?.count ?? 0;
+            const isActive = activeCardId === card.id;
+
             return (
               <div
                 key={card.id}
-                className={`album-card-item ${isUnlocked ? "unlocked" : "locked"}`}
+                className={`album-card-item ${isUnlocked ? "unlocked" : "locked"} ${isActive ? "active-combat-card" : ""}`}
                 style={{
-                  borderColor: isUnlocked ? card.rarityColor : "rgba(0,0,0,0.05)",
-                  boxShadow: isUnlocked ? `0 4px 10px -2px ${card.rarityColor}20` : "none"
+                  borderColor: isActive ? "var(--color-primary)" : isUnlocked ? card.rarityColor : "rgba(0,0,0,0.05)",
+                  boxShadow: isActive 
+                    ? `0 0 15px var(--color-primary)` 
+                    : isUnlocked 
+                      ? `0 4px 10px -2px ${card.rarityColor}20` 
+                      : "none"
                 }}
+                onClick={() => isUnlocked && setSelectedCard(card)}
               >
+                {isActive && <div className="combat-active-badge">⚔️ 出戰中</div>}
+                
                 <div className="album-card-emoji">{isUnlocked ? card.emoji : "❓"}</div>
+                
+                {isUnlocked && (
+                  <div className="card-badge-stats">
+                    <span className="lvl-badge">Lv.{level}</span>
+                    {count > 1 && <span className="count-badge">x{count}</span>}
+                  </div>
+                )}
+
                 <div className="album-card-details">
                   <span className="album-card-name">{isUnlocked ? card.name : "未解鎖"}</span>
                   <span className="album-card-english">
@@ -296,7 +375,85 @@ export const MagicShop: React.FC = () => {
           })}
         </div>
       </div>
+
+      {/* Card Detail Popup (Upgrade & Active settings) */}
+      {selectedCard && (() => {
+        const invItem = inventory.find(i => i.cardId === selectedCard.id);
+        const level = invItem?.level ?? 1;
+        const count = invItem?.count ?? 0;
+        const isActive = activeCardId === selectedCard.id;
+        
+        // Calculate dynamic stats based on level
+        const currentStats = getCardStats(selectedCard.atk, selectedCard.hp, level);
+        const nextStats = getCardStats(selectedCard.atk, selectedCard.hp, level + 1);
+
+        return (
+          <div className="gacha-result-overlay" onClick={() => { setSelectedCard(null); setErrorMessage(null); }}>
+            <div className="drawn-card-wrapper animate-popup" onClick={(e) => e.stopPropagation()}>
+              <div className="drawn-card-glow" style={{ boxShadow: `0 0 40px ${selectedCard.rarityColor}` }}>
+                <div className="drawn-card-rarity" style={{ background: selectedCard.rarityColor }}>
+                  {selectedCard.rarityName}寵物
+                </div>
+                
+                <div className="drawn-card-emoji">{selectedCard.emoji}</div>
+                <h2 className="drawn-card-title">{selectedCard.name}</h2>
+                <span className="drawn-card-english">({selectedCard.english})</span>
+
+                <div className="card-status-info">
+                  <span className="lvl-tag">目前等級: <strong>Lv.{level}</strong></span>
+                  <span className="count-tag">擁有重複數量: <strong>{count} 張</strong></span>
+                </div>
+
+                <div className="drawn-card-attributes">
+                  <div className="attr-pill">
+                    <span>攻擊力 ATK</span>
+                    <strong>{currentStats.atk} {count > 1 && <span className="stat-up-preview">➔ {nextStats.atk}</span>}</strong>
+                  </div>
+                  <div className="attr-pill">
+                    <span>生命值 HP</span>
+                    <strong>{currentStats.hp} {count > 1 && <span className="stat-up-preview">➔ {nextStats.hp}</span>}</strong>
+                  </div>
+                </div>
+
+                {errorMessage && (
+                  <div className="card-upgrade-error">
+                    <ShieldAlert size={14} />
+                    <span>{errorMessage}</span>
+                  </div>
+                )}
+
+                <div className="card-action-buttons">
+                  <button 
+                    className={`card-btn-action toggle-active-btn ${isActive ? "active" : ""}`}
+                    onClick={() => handleToggleActive(selectedCard.id)}
+                  >
+                    {isActive ? (
+                      <>取消出戰 🛡️</>
+                    ) : (
+                      <>設定為出戰寵物 ⚔️</>
+                    )}
+                  </button>
+
+                  <button 
+                    className="card-btn-action upgrade-card-btn"
+                    disabled={count <= 1 || (user?.coins ?? 0) < UPGRADE_COST}
+                    onClick={() => handleUpgradeCard(selectedCard.id)}
+                  >
+                    <span>融合升級 🔮</span>
+                    <small>花費 {UPGRADE_COST} 金幣 (需 2 張卡牌)</small>
+                  </button>
+                </div>
+
+                <button className="close-card-btn-mini" onClick={() => { setSelectedCard(null); setErrorMessage(null); }}>
+                  關閉詳情
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 };
+
 export default MagicShop;

@@ -2484,3 +2484,321 @@ button {
   }
 }
 
+/* ==========================================
+   RPG Combat Arena Styles
+   ========================================== */
+
+.rpg-arena-split {
+  display: grid;
+  grid-template-columns: 1fr 120px 1fr;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  max-width: 750px;
+  margin: 0 auto;
+}
+
+.rpg-combatant-box {
+  background: rgba(255, 255, 255, 0.6);
+  border: 2px solid rgba(226, 232, 240, 0.8);
+  border-radius: var(--radius-md);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  transition: all 0.3s ease;
+  min-height: 240px;
+  box-shadow: var(--shadow-sm);
+}
+
+.pet-combatant {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.05) 0%, rgba(255, 255, 255, 0.6) 100%);
+  border-color: rgba(99, 102, 241, 0.15);
+}
+
+.active-combat-card {
+  border-color: var(--color-primary) !important;
+  box-shadow: 0 0 12px rgba(99, 102, 241, 0.3) !important;
+}
+
+.combat-active-badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  background: var(--color-primary);
+  color: white;
+  font-size: 0.65rem;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 9999px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.card-badge-stats {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  gap: 4px;
+}
+
+.lvl-badge, .count-badge {
+  font-size: 0.65rem;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 9999px;
+  color: white;
+}
+
+.lvl-badge {
+  background: #4f46e5;
+}
+
+.count-badge {
+  background: #10b981;
+}
+
+.card-status-info {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 16px;
+  font-size: 0.85rem;
+  color: #64748b;
+}
+
+.card-status-info strong {
+  color: #1e1b4b;
+}
+
+.stat-up-preview {
+  color: #10b981;
+  font-size: 0.85rem;
+  margin-left: 4px;
+}
+
+.card-upgrade-error {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #dc2626;
+  background: #fef2f2;
+  border: 1px solid #fca5a5;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 0.8rem;
+  font-weight: 600;
+  margin-bottom: 16px;
+  width: 100%;
+  justify-content: center;
+}
+
+.card-action-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  margin-bottom: 16px;
+}
+
+.card-btn-action {
+  width: 100%;
+  padding: 10px;
+  border-radius: var(--radius-sm);
+  font-weight: 700;
+  font-size: 0.9rem;
+  transition: all 0.2s ease;
+}
+
+.toggle-active-btn {
+  background: #f1f5f9;
+  color: #334155;
+  border: 1px solid #cbd5e1;
+}
+
+.toggle-active-btn.active {
+  background: #ef4444;
+  color: white;
+  border-color: #ef4444;
+}
+
+.toggle-active-btn:hover {
+  filter: brightness(0.95);
+}
+
+.upgrade-card-btn {
+  background: linear-gradient(135deg, #a855f7 0%, #6366f1 100%);
+  color: white;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  box-shadow: 0 4px 10px rgba(99, 102, 241, 0.2);
+}
+
+.upgrade-card-btn small {
+  font-size: 0.7rem;
+  font-weight: 500;
+  opacity: 0.85;
+}
+
+.upgrade-card-btn:disabled {
+  background: #cbd5e1;
+  color: #64748b;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+.close-card-btn-mini {
+  background: none;
+  color: #64748b;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-decoration: underline;
+  border: none;
+}
+
+.combatant-label {
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 8px;
+}
+
+.rpg-combatant-emoji {
+  font-size: 4rem;
+  margin-bottom: 16px;
+  filter: drop-shadow(0 6px 8px rgba(0,0,0,0.15));
+  animation: floatMonster 4s ease-in-out infinite;
+}
+
+.player-pet-hp {
+  background: #e2e8f0;
+}
+
+.player-pet-hp .rpg-monster-hp-fill {
+  background: #3b82f6 !important;
+}
+
+.rpg-combatant-name {
+  font-family: var(--font-title);
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #1e293b;
+  margin: 8px 0 2px 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.combat-level-tag {
+  background: #e0e7ff;
+  color: #4f46e5;
+  font-size: 0.7rem;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 9999px;
+}
+
+.combat-stats-row {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #64748b;
+}
+
+.rpg-vs-separator {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.vs-badge-circle {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%);
+  color: white;
+  font-family: var(--font-title);
+  font-weight: 900;
+  font-size: 1.3rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  box-shadow: 0 4px 10px rgba(239, 68, 68, 0.4);
+  text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
+
+.combat-logs-ticker {
+  background: rgba(15, 23, 42, 0.8);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  width: 140px;
+  text-align: center;
+  color: #e2e8f0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  box-shadow: var(--shadow-sm);
+}
+
+.ticker-log-item {
+  line-height: 1.3;
+  animation: fadeIn 0.3s ease-out;
+}
+
+/* Floating damage numbers */
+.floating-damage-text {
+  position: absolute;
+  top: -20px;
+  font-family: var(--font-title);
+  font-size: 2.2rem;
+  font-weight: 900;
+  pointer-events: none;
+  z-index: 10;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+}
+
+.deal-damage-anim {
+  color: #f59e0b;
+  animation: floatDamageUp 0.8s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+}
+
+.take-damage-anim {
+  color: #ef4444;
+  animation: floatDamageUp 0.8s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+}
+
+@keyframes floatDamageUp {
+  0% { transform: translateY(20px) scale(0.6); opacity: 0; }
+  25% { transform: translateY(0px) scale(1.1); opacity: 1; }
+  100% { transform: translateY(-50px) scale(0.9); opacity: 0; }
+}
+
+@media (max-width: 768px) {
+  .rpg-arena-split {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .rpg-vs-separator {
+    flex-direction: row;
+    justify-content: center;
+    width: 100%;
+  }
+  .combat-logs-ticker {
+    width: 240px;
+  }
+  .rpg-combatant-box {
+    min-height: 180px;
+    padding: 16px;
+  }
+  .rpg-combatant-emoji {
+    font-size: 3rem;
+  }
+}
+
+
