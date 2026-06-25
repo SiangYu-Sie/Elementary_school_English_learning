@@ -917,6 +917,7 @@ button {
 
 .review-item.correct { border-left: 4px solid var(--color-success); }
 .review-item.incorrect { border-left: 4px solid var(--color-danger); }
+.review-item.skipped { border-left: 4px solid var(--color-text-muted); background-color: #f8fafc; opacity: 0.85; }
 
 .review-item-main {
   display: flex;

@@ -350,11 +350,12 @@ export const QuizEngine: React.FC<QuizEngineProps> = ({ words, level, onFinished
   const finishQuiz = async (durationSecs: number) => {
     setGameState("results");
     const correctCount = answers.filter((a) => a.isCorrect).length;
-    const finalScore = Math.round((correctCount / questions.length) * 100);
     const isMonsterDefeated = monsterHp <= 0 || isKo;
+    const totalCount = isMonsterDefeated ? Math.max(1, answers.length) : questions.length;
+    const finalScore = Math.round((correctCount / totalCount) * 100);
 
-    let expGained = (correctCount * 10) + (correctCount === questions.length ? 30 : 0) + (isMonsterDefeated ? 50 : 0);
-    let coinsGained = (correctCount * 5) + (correctCount === questions.length ? 15 : 0) + (isMonsterDefeated ? 30 : 0);
+    let expGained = (correctCount * 10) + (correctCount === totalCount ? 30 : 0) + (isMonsterDefeated ? 50 : 0);
+    let coinsGained = (correctCount * 5) + (correctCount === totalCount ? 15 : 0) + (isMonsterDefeated ? 30 : 0);
     let leveledUp = false;
 
     if (user) {
@@ -364,7 +365,7 @@ export const QuizEngine: React.FC<QuizEngineProps> = ({ words, level, onFinished
           user.id,
           level,
           correctCount,
-          questions.length,
+          totalCount,
           durationSecs,
           answers,
           isMonsterDefeated
@@ -459,7 +460,9 @@ export const QuizEngine: React.FC<QuizEngineProps> = ({ words, level, onFinished
 
   if (gameState === "results") {
     const correctCount = answers.filter((a) => a.isCorrect).length;
-    const finalScore = Math.round((correctCount / questions.length) * 100);
+    const isMonsterDefeated = monsterHp <= 0 || isKo;
+    const totalCount = isMonsterDefeated ? Math.max(1, answers.length) : questions.length;
+    const finalScore = Math.round((correctCount / totalCount) * 100);
 
     return (
       <div className="quiz-results-card">
@@ -499,7 +502,10 @@ export const QuizEngine: React.FC<QuizEngineProps> = ({ words, level, onFinished
         <div className="results-info-grid">
           <div className="info-box">
             <span className="info-title">答對題數</span>
-            <span className="info-value text-green">{correctCount} / {questions.length}</span>
+            <span className="info-value text-green">
+              {correctCount} / {totalCount}
+              {isMonsterDefeated && answers.length < questions.length && ` (跳過 ${questions.length - answers.length} 題)`}
+            </span>
           </div>
           <div className="info-box">
             <span className="info-title">測驗時間</span>
@@ -510,12 +516,32 @@ export const QuizEngine: React.FC<QuizEngineProps> = ({ words, level, onFinished
         <div className="review-list">
           <h3>單字回顧</h3>
           {questions.map((q, idx) => {
-            const isAnsCorrect = answers[idx]?.isCorrect;
+            const answer = answers[idx];
+            const isAnsCorrect = answer?.isCorrect;
+            const isSkipped = !answer;
+
+            let itemClass = "review-item";
+            if (isSkipped) {
+              itemClass += " skipped";
+            } else if (isAnsCorrect) {
+              itemClass += " correct";
+            } else {
+              itemClass += " incorrect";
+            }
+
             return (
-              <div key={idx} className={`review-item ${isAnsCorrect ? "correct" : "incorrect"}`}>
+              <div key={idx} className={itemClass}>
                 <div className="review-item-main">
-                  {isAnsCorrect ? <CheckCircle2 size={18} className="text-green" /> : <XCircle size={18} className="text-red" />}
-                  <span className="review-word">{q.word.word}</span>
+                  {isSkipped ? (
+                    <span className="text-gray text-xs bg-slate-100 px-2 py-0.5 rounded mr-2" style={{ color: "var(--color-text-muted)" }}>
+                      🛡️ 怪獸已擊敗 (跳過)
+                    </span>
+                  ) : isAnsCorrect ? (
+                    <CheckCircle2 size={18} className="text-green" />
+                  ) : (
+                    <XCircle size={18} className="text-red" />
+                  )}
+                  <span className="review-word" style={{ marginLeft: isSkipped ? '4px' : '0' }}>{q.word.word}</span>
                   <span className="review-translation">({q.word.translation})</span>
                 </div>
                 <button className="sound-btn-mini" onClick={() => speak(q.word.word)}>
@@ -806,7 +832,7 @@ export const QuizEngine: React.FC<QuizEngineProps> = ({ words, level, onFinished
               )}
             </div>
             <button className="next-question-btn-rpg" onClick={nextQuestion}>
-              {currentIdx + 1 === questions.length ? "查看戰果報告" : "下一題"}
+              {(currentIdx + 1 === questions.length || monsterHp <= 0 || isKo) ? "查看戰果報告" : "下一題"}
             </button>
           </div>
         )}
