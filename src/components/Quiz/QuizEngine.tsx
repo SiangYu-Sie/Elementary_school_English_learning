@@ -583,7 +583,7 @@ export const QuizEngine: React.FC<QuizEngineProps> = ({ words, level, onFinished
   };
 
   return (
-    <div className="quiz-play-view">
+    <div className={`quiz-play-view ${gameState === "playing" ? "playing-combat" : ""}`}>
       {/* 頂部冒險狀態列 */}
       <div className="quiz-play-header">
         <span className="quiz-progress-text">🧙‍♂️ 生命值: <span className="rpg-hearts-display">{getPlayerHearts()}</span></span>
